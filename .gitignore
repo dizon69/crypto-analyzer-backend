@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+get-pip.py
+.env
+*.env
+venv/
+env/
+fly.toml
+.DS_Store
+Thumbs.db
