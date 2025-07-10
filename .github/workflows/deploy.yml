@@ -1,0 +1,35 @@
+name: 🚀 Deploy FastAPI Backend to VPS (Hetzner)
+
+on:
+  push:
+    branches:
+      - main  # Ubah jika pakai branch lain
+
+jobs:
+  deploy:
+    name: 🔁 Deploy to Hetzner
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout source code
+      uses: actions/checkout@v3
+
+    - name: 🔐 SSH & Deploy to VPS
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          echo "📦 Pulling latest code..."
+          cd /root/backend
+          git pull origin main
+
+          echo "🐍 Activating venv..."
+          source venv/bin/activate
+
+          echo "📦 Installing dependencies..."
+          pip install -r requirements.txt
+
+          echo "🔁 Restarting backend service..."
+          sudo systemctl restart backend
