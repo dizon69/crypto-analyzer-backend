@@ -1,17 +1,27 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import bybit_ws, coingecko, buyqueue
+from app.api import buyqueue, volume
+from app.collector.ws_collector import start_collector
+from app.api import breakout         # <--- tambahkan di sini
+from app.api import ema 
+from app.api import volume
+from app.api import rsi
+from app.api import spk_signal
 import asyncio
-from app.collector.websocket_collector import start_binance_listener
+
+SYMBOLS = [
+    "btcusdt", "ethusdt", "bnbusdt", "solusdt", "adausdt",
+    "xrpusdt", "dogeusdt", "maticusdt", "ltcusdt", "linkusdt"
+]
 
 app = FastAPI()
 
-# ✅ Tambahkan whitelist domain frontend kamu
+# --- CORS whitelist frontend lo ---
 origins = [
     "https://crypto-analyzer.vercel.app",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://localhost:3000"
 ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -20,11 +30,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Include router
-app.include_router(bybit_ws.router, prefix="/api/v1/ws", tags=["WebSocket"])
-app.include_router(coingecko.router, prefix="/api/v1/coingecko", tags=["CoinGecko"])
-app.include_router(buyqueue.router, prefix="/api", tags=["BuyQueue"])
+# ====== GLOBAL COLLECTORS ======
+collector = None
+kline_collector = None
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(start_binance_listener())
+    global collector, kline_collector
+    collector, kline_collector = await start_collector(SYMBOLS)
+
+app.include_router(buyqueue.router, prefix="/api")
+app.include_router(volume.router, prefix="/api")
+app.include_router(breakout.router, prefix="/api")
+app.include_router(ema.router, prefix="/api")
+app.include_router(rsi.router, prefix="/api")
+app.include_router(spk_signal.router, prefix="/api")
+
+@app.get("/")
+async def root():
+    return {"message": "Crypto Analyzer Backend Running!"}
