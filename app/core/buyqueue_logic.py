@@ -1,83 +1,91 @@
-# backend/app/core/buyqueue_logic.py
-
+import time
 from collections import deque
-from typing import List, Dict, Any
+
+# === Parameter ===
+MAXLEN = 5
+RATIO_THRESHOLD = 1.6
 
 class BuyQueueAnalyzer:
-    def __init__(self, buffer: Dict[str, List[dict]]):
-        """
-        buffer: dict hasil dari collector, {symbol: [ {ratio, sum_bids, sum_asks, ts}, ... ]}
-        """
-        self.buffer = buffer
+    def __init__(self, symbols):
+        self.symbols = symbols
+        self.data = {sym: deque(maxlen=MAXLEN) for sym in symbols}
 
-    def analyze_symbol(self, symbol: str) -> dict:
-        """
-        Analisa 5 detik terakhir 1 coin. 
-        Return: dict detail hasil penilaian buy queue sesuai logic file lo
-        """
-        dq: List[dict] = self.buffer.get(symbol, [])
-        result = {
-            "symbol": symbol,
-            "status": "gugur",
-            "ratio_now": None,
-            "stabil": False,
-            "dominasi_top5": False,
-            "anti_spoof": False,
-            "reason": [],
-            "score": 0,
+    def update(self, symbol, ratio, sum_bids, sum_asks, ts):
+        if symbol not in self.data:
+            return
+        self.data[symbol].append({
+            "ratio": ratio,
+            "sum_bids": sum_bids,
+            "sum_asks": sum_asks,
+            "ts": ts / 1000  # convert to detik
+        })
+
+    def analyze(self):
+        results = []
+        now = time.time()
+
+        # Ambil semua sum_bids terakhir
+        latest_bids = {
+            symbol: dq[-1]["sum_bids"] if dq else 0
+            for symbol, dq in self.data.items()
         }
-        if len(dq) < 5:
-            result["reason"].append("Data < 5 detik")
-            return result
+        top5_bids = sorted(latest_bids.items(), key=lambda x: x[1], reverse=True)[:5]
+        top5_symbols = {s for s, _ in top5_bids}
 
-        ratios = [item["ratio"] for item in dq]
-        sum_bids = [item["sum_bids"] for item in dq]
-        sum_asks = [item["sum_asks"] for item in dq]
+        for symbol, dq in self.data.items():
+            item = {
+                "symbol": symbol,
+                "status": "ok",
+                "score": 0,
+                "ratio_now": None,
+                "stabil": False,
+                "dominasi_top5": False,
+                "anti_spoof": False,
+                "reason": []
+            }
 
-        # --- 1. Rasio > 1.4 minimal 3 dari 5 detik ---
-        threshold = 1.4
-        stabil = sum(r > threshold for r in ratios) >= 3
-        result["stabil"] = stabil
-        result["ratio_now"] = ratios[-1]
-        if not stabil:
-            result["reason"].append(f"Rasio buy/sell < {threshold} kurang dari 3 detik")
+            if len(dq) < MAXLEN:
+                item["status"] = "gugur"
+                item["reason"].append("Data < 5 detik")
+                results.append(item)
+                continue
 
-        # --- 2. Anti spike: toleransi fluktuasi lebih longgar ---
-        max_r, min_r = max(ratios), min(ratios)
-        anti_spoof = (max_r - min_r) < 1.5
-        result["anti_spoof"] = anti_spoof
-        if not anti_spoof:
-            result["reason"].append("Fluktuasi/spike ratio terlalu tinggi (spoofing?)")
+            ratios = [x["ratio"] for x in dq]
+            ts_diff = now - dq[0]["ts"]
+            item["ratio_now"] = ratios[-1]
 
-        # --- 3. Dominasi Top 5 minimal 4 dari 5 detik ---
-        dominasi = sum(b > a for b, a in zip(sum_bids, sum_asks)) >= 4
-        result["dominasi_top5"] = dominasi
-        if not dominasi:
-            result["reason"].append("Tidak dominan di top 5 orderbook (bids <= asks)")
+            # Rule 1: Rasio harus di atas 1.6 semua
+            if any(r < RATIO_THRESHOLD for r in ratios):
+                item["status"] = "gugur"
+                item["reason"].append("Rasio < 1.6 dalam 5 detik")
+            else:
+                item["stabil"] = True
+                item["score"] += 1
 
-        # --- FINAL STATUS ---
-        if stabil and anti_spoof and dominasi:
-            result["status"] = "lolos"
-            result["score"] = 25
-        else:
-            result["status"] = "gugur"
-            result["score"] = 0
+            # Rule 2: Harus stabil selama 5 detik (selisih timestamp)
+            if ts_diff < 5:
+                item["status"] = "gugur"
+                item["reason"].append("Durasi < 5 detik")
 
-        return result
+            # Rule 3: Dominasi TOP 5 berdasarkan sum_bids
+            if symbol in top5_symbols:
+                item["dominasi_top5"] = True
+                item["score"] += 1
+            else:
+                item["reason"].append("Tidak dominan di TOP 5")
 
-    def analyze_all(self) -> List[dict]:
-        return [self.analyze_symbol(sym) for sym in self.buffer.keys()]
+            # Rule 4: Anti spoofing - tidak boleh lonjakan mendadak
+            diffs = [abs(ratios[i+1] - ratios[i]) for i in range(len(ratios)-1)]
+            if all(diff <= 0.5 for diff in diffs):
+                item["anti_spoof"] = True
+                item["score"] += 1
+            else:
+                item["reason"].append("Rasio naik-turun mendadak")
 
-# ========== USAGE (for API/backend) ==========
-if __name__ == "__main__":
-    dummy_buffer = {
-        "btcusdt": [
-            {"ratio": 1.3, "sum_bids": 8000, "sum_asks": 4000, "ts": 1},
-            {"ratio": 1.5, "sum_bids": 8200, "sum_asks": 4100, "ts": 2},
-            {"ratio": 1.7, "sum_bids": 7900, "sum_asks": 4300, "ts": 3},
-            {"ratio": 1.4, "sum_bids": 8300, "sum_asks": 4200, "ts": 4},
-            {"ratio": 1.6, "sum_bids": 8500, "sum_asks": 4200, "ts": 5},
-        ]
-    }
-    analyzer = BuyQueueAnalyzer(dummy_buffer)
-    print(analyzer.analyze_all())
+            # Final: Set status gugur kalau salah satu komponen gagal
+            if not (item["stabil"] and item["dominasi_top5"] and item["anti_spoof"]):
+                item["status"] = "gugur"
+
+            results.append(item)
+
+        return results

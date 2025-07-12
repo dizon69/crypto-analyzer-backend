@@ -1,2 +1,3 @@
-orderbook_collector = None
-kline_collector = None
+
+
+buyqueue_analyzer = None

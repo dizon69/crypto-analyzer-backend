@@ -1,57 +1,42 @@
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
+# backend/app/main.py
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.core import globals
 from app.api import buyqueue
-from app.collector.ws_collector import start_collector
-from app.api import breakout         # <--- tambahkan di sini
-from app.api import ema 
-from app.api import volume
-from app.api import rsi
-from app.api import spk_signal
-import asyncio
-
-SYMBOLS = [
-    "btcusdt", "ethusdt", "bnbusdt", "solusdt", "adausdt",
-    "xrpusdt", "dogeusdt", "maticusdt", "ltcusdt", "linkusdt"
-]
+from app.core import globals
+from app.analyzer.buyqueue_logic import BuyQueueAnalyzer
+from app.config import SYMBOLS
 
 app = FastAPI()
 
-# --- CORS whitelist frontend lo ---
-origins = [
-    "https://crypto-analyzer.vercel.app",
-    "http://localhost:4173",
-    "https://www.crypto-analyzer.com",
-    "http://localhost:3000",
-    "http://localhost:5173"
-
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ====== GLOBAL COLLECTORS ======
-from app.core import globals
+# ✅ Router
+app.include_router(buyqueue.router, prefix="/api", tags=["BuyQueue"])
 
 @app.on_event("startup")
 async def startup_event():
-    globals.orderbook_collector, globals.kline_collector = await start_collector(SYMBOLS)
+    from app.collector.websocket_collector import start_collector
+    import asyncio
 
-app.include_router(buyqueue.router, prefix="/api")
-app.include_router(volume.router, prefix="/api")
-app.include_router(breakout.router, prefix="/api")
-app.include_router(ema.router, prefix="/api")
-app.include_router(rsi.router, prefix="/api")
-app.include_router(spk_signal.router, prefix="/api")
+    orderbook_collector, _ = await start_collector(SYMBOLS)
+    globals.orderbook_collector = orderbook_collector
 
-@app.get("/")
-async def root():
-    return {"message": "Crypto Analyzer Backend Running!"}
+    # Inisialisasi dan simpan analyzer
+    analyzer = BuyQueueAnalyzer(SYMBOLS)
+    globals.buyqueue_analyzer = analyzer
+
+    # ✅ Loop analisa tiap detik
+    async def update_loop():
+        while True:
+            for sym in SYMBOLS:
+                dq = orderbook_collector.get_last_n(sym, 1)
+                if dq:
+                    latest = dq[-1]
+                    analyzer.update(
+                        sym,
+                        latest["ratio"],
+                        latest["sum_bids"],
+                        latest["sum_asks"],
+                        latest["ts"]  # sudah dalam ms
+                    )
+            await asyncio.sleep(1)
+
+    asyncio.create_task(update_loop())
