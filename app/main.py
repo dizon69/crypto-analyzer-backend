@@ -25,9 +25,9 @@ app = FastAPI()
 origins = [
     "https://crypto-analyzer.vercel.app",
     "http://localhost:4173",
-    "http://localhost:5173",
     "https://www.crypto-analyzer.com",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://localhost:5173"
 
 ]
 app.add_middleware(
