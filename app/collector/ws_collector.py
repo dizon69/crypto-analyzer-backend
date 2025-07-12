@@ -1,5 +1,3 @@
-# backend/app/collector/ws_collector.py
-
 import asyncio
 from collections import deque
 import logging
@@ -9,26 +7,19 @@ logger = logging.getLogger("collector.ws")
 
 class OrderbookCollector:
     def __init__(self, symbols):
-        """
-        symbols: list, contoh ["btcusdt", "ethusdt", ...]
-        """
         self.symbols = symbols
-        self.deques = {sym: deque(maxlen=5) for sym in symbols}  # 5 detik terakhir per coin
+        self.deques = {sym: deque(maxlen=5) for sym in symbols}
 
     def _parse_depth(self, data):
-        """
-        Ambil best bid/ask dari pesan Binance orderbook update
-        """
         stream = data.get('stream', '')
         payload = data.get('data', {})
         if "@depth" in stream and payload:
             symbol = payload.get('s', '').lower()
             bids = payload.get('b', [])
             asks = payload.get('a', [])
-            # Top 5 bid/ask → sum qty
             sum_bids = sum(float(b[1]) for b in bids[:5])
             sum_asks = sum(float(a[1]) for a in asks[:5])
-            ts = payload.get('T', 0)  # event time ms
+            ts = payload.get('T', 0)
             return symbol, sum_bids, sum_asks, ts
         return None
 
@@ -46,6 +37,7 @@ class OrderbookCollector:
                 "ts": ts
             })
             logger.debug(f"[{symbol}] buy/sell={ratio:.2f} bids={sum_bids:.2f} asks={sum_asks:.2f}")
+            print(f"[DEBUG] {symbol} → ratio={ratio:.2f}, bid={sum_bids:.2f}, ask={sum_asks:.2f}")
 
     def get_last_n(self, symbol, n=5):
         dq = self.deques.get(symbol)
@@ -84,6 +76,7 @@ class KlineCollector:
                 "close": close,
                 "volume": volume,
             })
+            print(f"[DEBUG] KLINE {symbol} close={close}, vol={volume}")
 
     def get_last_n(self, symbol, n=3):
         dq = self.klines.get(symbol)
@@ -93,8 +86,11 @@ class KlineCollector:
         return {sym: list(dq) for sym, dq in self.klines.items()}
 
 
-# ================== Run background task BinanceWSClient + Collector ==================
+# ================== START COLLECTOR ==================
 async def start_collector(symbols):
+    print("[DEBUG] start_collector() called with:", symbols)
+    logger.info("[WS Collector] Starting Binance collector...")
+
     orderbook_streams = [f"{s}@depth5@100ms" for s in symbols]
     kline_streams = [f"{s}@kline_1h" for s in symbols]
     streams = orderbook_streams + kline_streams
@@ -107,10 +103,16 @@ async def start_collector(symbols):
         kline_collector.on_kline_update(data)
 
     ws_client = BinanceWSClient(streams, on_message)
+
+    print("[DEBUG] BinanceWSClient created, launching...")
+    logger.info("[WS Collector] BinanceWSClient launching...")
+
     asyncio.create_task(ws_client.run())
+
     return orderbook_collector, kline_collector
 
-# ============ USAGE EXAMPLE ============
+
+# ============ TEST MANUAL RUN =============
 if __name__ == "__main__":
     import time
 

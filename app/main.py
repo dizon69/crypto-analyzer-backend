@@ -1,5 +1,10 @@
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core import globals
 from app.api import buyqueue
 from app.collector.ws_collector import start_collector
 from app.api import breakout         # <--- tambahkan di sini
@@ -34,13 +39,11 @@ app.add_middleware(
 )
 
 # ====== GLOBAL COLLECTORS ======
-collector = None
-kline_collector = None
+from app.core import globals
 
 @app.on_event("startup")
 async def startup_event():
-    global collector, kline_collector
-    collector, kline_collector = await start_collector(SYMBOLS)
+    globals.orderbook_collector, globals.kline_collector = await start_collector(SYMBOLS)
 
 app.include_router(buyqueue.router, prefix="/api")
 app.include_router(volume.router, prefix="/api")
