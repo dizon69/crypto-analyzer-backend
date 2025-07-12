@@ -5,6 +5,8 @@ from app.api import buyqueue
 from app.core import globals
 from app.analyzer.buyqueue_logic import BuyQueueAnalyzer
 from app.config import SYMBOLS
+from app.buyqueue_logic import BuyQueueAnalyzer
+
 
 app = FastAPI()
 
