@@ -81,3 +81,22 @@ class BreakoutAnalyzer:
 
     def analyze_all(self) -> List[dict]:
         return [self.analyze_symbol(sym) for sym in self.buffer.keys()]
+
+        # =======================
+# Default Resistance Dict
+# =======================
+
+# Isi manual atau biarin kosong dulu, nanti bisa diupdate otomatis
+default_resistance = {
+    "BTCUSDT": 69000,
+    "ETHUSDT": 3500,
+    "BNBUSDT": 600,
+    "SOLUSDT": 150,
+    "ADAUSDT": 0.5,
+    "XRPUSDT": 0.8,
+    "DOGEUSDT": 0.15,
+    "MATICUSDT": 1.2,
+    "LTCUSDT": 90,
+    "LINKUSDT": 15
+}
+

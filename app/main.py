@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import buyqueue, volume
+from app.api import buyqueue
 from app.collector.ws_collector import start_collector
 from app.api import breakout         # <--- tambahkan di sini
 from app.api import ema 
