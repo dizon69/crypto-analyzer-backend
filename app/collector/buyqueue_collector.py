@@ -6,10 +6,7 @@ from app.core.globals import tracker
 async def collect():
     print("🔌 Connecting to Binance WebSocket...")
     url = "wss://stream.binance.com:9443/ws"
-    pairs = [
-        "btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt",
-        "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"
-    ]
+    pairs = ["btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"]
     streams = [f"{pair}@depth5@100ms" for pair in pairs]
 
     payload = {
@@ -26,11 +23,25 @@ async def collect():
             data = json.loads(message)
             if not ("b" in data and "a" in data and "s" in data):
                 continue
-
-            symbol = data["s"].lower()
+            symbol = data["s"].upper()
             try:
                 buy_qty = sum(float(x[1]) for x in data["b"])
                 sell_qty = sum(float(x[1]) for x in data["a"])
-                tracker.update(symbol, buy_qty, sell_qty)
+                total = buy_qty + sell_qty
+                if total == 0:
+                    continue
+                buy_ratio = round((buy_qty / total) * 100, 2)
+                sell_ratio = round((sell_qty / total) * 100, 2)
+                result = [{
+                    "symbol": symbol,
+                    "buy_qty": buy_qty,
+                    "sell_qty": sell_qty,
+                    "buy_ratio": buy_ratio,
+                    "sell_ratio": sell_ratio
+                }]
+                tracker.update(result)
             except Exception as e:
-                print(f"⚠️ Error {symbol.upper()}: {e}")
+                print(f"⚠️ Error on {symbol}: {e}")
+
+def get_top_buy_queue():
+    return tracker.get_top()
