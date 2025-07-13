@@ -3,15 +3,18 @@ import time
 
 class BuySellRatioTracker:
     def __init__(self):
-        self.data = {}  # {symbol: (buy_qty, sell_qty, timestamp)}
+        self.data = {}
 
-    def update(self, symbol, buy, sell):
-        self.data[symbol] = {
-            "symbol": symbol.upper(),
-            "buy_qty": round(buy, 2),
-            "sell_qty": round(sell, 2),
-            "timestamp": time.time()
-        }
+    def update(self, result: list[dict]):
+        for entry in result:
+            symbol = entry["symbol"]
+            self.data[symbol] = entry
 
-    def get_latest(self):
-        return list(self.data.values())
+    def get_top(self, limit=10):
+        # Balikin list top coin berdasarkan rasio buy tertinggi
+        sorted_data = sorted(
+            self.data.values(),
+            key=lambda x: x["buy_ratio"],
+            reverse=True
+        )
+        return sorted_data[:limit]
