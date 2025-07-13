@@ -8,7 +8,9 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://crypto-analyzer.com"],  # ✅ hanya domain lo yang boleh akses
+    allow_origins=["https://crypto-analyzer.com",
+                   "https://www.crypto-analyzer.com",
+                   "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
