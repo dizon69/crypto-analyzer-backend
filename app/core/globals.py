@@ -1,3 +1,4 @@
-from app.services.buyqueue_logic import BuySellRatioTracker
+from app.core.buyqueue_logic import BuySellRatioTracker
+
 
 tracker = BuySellRatioTracker()
