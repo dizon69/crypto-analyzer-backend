@@ -1,5 +1,3 @@
-### ✅ 5. Lokasi: `app/main.py`
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import buyqueue
@@ -10,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://crypto-analyzer.com"],  # ✅ hanya domain lo yang boleh akses
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
