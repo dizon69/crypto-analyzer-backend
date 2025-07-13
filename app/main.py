@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import buyqueue
 from app.scheduler.job_runner import run_jobs
+from app.collector.binance_ws import collect
 import asyncio
 
 app = FastAPI()
