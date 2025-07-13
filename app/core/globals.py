@@ -1,3 +1,3 @@
+from app.core.buyqueue_logic import BuySellRatioTracker
 
-
-buyqueue_analyzer = None
+tracker = BuySellRatioTracker()

@@ -7,7 +7,7 @@ class BuySellRatioTracker:
 
     def update(self, symbol, buy, sell):
         now = time.time()
-        dq = self.data.setdefault(symbol, deque(maxlen=4))  # 🟢 cukup 4 data aja
+        dq = self.data.setdefault(symbol, deque(maxlen=5))  # 🟢 cukup 4 data aja
         dq.append((now, buy, sell))
 
     def get_top(self):
