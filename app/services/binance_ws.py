@@ -1,26 +1,35 @@
 import asyncio
-import websockets
 import json
-import random
+import websockets
+from app.core.buyqueue_logic import BuySellRatioTracker
 
-class BinanceOrderbookWS:
-    BASE_URL = "wss://stream.binance.com:9443/stream"
-    def __init__(self, symbols):
-        self.symbols = symbols
+tracker = BuySellRatioTracker()
 
-    async def __aiter__(self):
-        streams = '/'.join(f'{s}@depth10@100ms' for s in self.symbols)
-        url = f"{self.BASE_URL}?streams={streams}"
-        while True:
+async def start_binance_ws():
+    url = "wss://stream.binance.com:9443/ws"
+    pairs = ["btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt",
+             "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"]
+    streams = [f"{pair}@depth5@100ms" for pair in pairs]
+
+    payload = {
+        "method": "SUBSCRIBE",
+        "params": streams,
+        "id": 1
+    }
+
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
+        await ws.send(json.dumps(payload))
+        async for message in ws:
+            data = json.loads(message)
+            if not ("b" in data and "a" in data and "s" in data):
+                continue
+            symbol = data["s"].lower()
             try:
-                async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
-                    async for msg in ws:
-                        data = json.loads(msg)
-                        stream = data['stream']
-                        symbol = stream.split("@")[0]
-                        bids = data['data']['bids']
-                        asks = data['data']['asks']
-                        yield symbol, bids, asks
-            except Exception as e:
-                print("Binance WS Error:", e)
-                await asyncio.sleep(5 + random.uniform(0, 5))  # random delay reconnect 5-10 detik
+                buy_qty = sum(float(x[1]) for x in data["b"])
+                sell_qty = sum(float(x[1]) for x in data["a"])
+                tracker.update(symbol, buy_qty, sell_qty)
+            except Exception:
+                continue
+
+def get_top_buyqueue():
+    return tracker.get_top()

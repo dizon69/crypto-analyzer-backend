@@ -1,28 +1,34 @@
+### ✅ 1. Lokasi: `app/core/buyqueue_logic.py`
+
 from collections import deque
 import time
 
-MAXLEN = 5
-MIN_BUY_SELL_RATIO = 1.6
-
-class BuyQueueAnalyzer:
+class BuySellRatioTracker:
     def __init__(self):
-        self.coin_data = {}
+        self.data = {}  # {symbol: deque of (timestamp, buy_qty, sell_qty)}
 
-    def update_coin(self, symbol, buy_qty, sell_qty):
-        ratio = buy_qty / sell_qty if sell_qty > 0 else 0
-        dq = self.coin_data.setdefault(symbol, deque(maxlen=MAXLEN))
-        dq.append((time.time(), ratio))
+    def update(self, symbol, buy, sell):
+        now = time.time()
+        dq = self.data.setdefault(symbol, deque(maxlen=5))
+        dq.append((now, buy, sell))
 
-    def get_top_buyers(self):
+    def get_top(self):
         result = []
-        for symbol, entries in self.coin_data.items():
-            if len(entries) < MAXLEN:
+        for symbol, entries in self.data.items():
+            if len(entries) < 5:
                 continue
-            ratios = [r for _, r in entries]
-            if all(r > MIN_BUY_SELL_RATIO for r in ratios) and not self.too_fluctuating(ratios):
-                avg_ratio = sum(ratios) / len(ratios)
-                result.append((symbol, avg_ratio))
-        return sorted(result, key=lambda x: x[1], reverse=True)[:10]
+            buy_avg = sum(x[1] for x in entries) / len(entries)
+            sell_avg = sum(x[2] for x in entries) / len(entries)
+            ratio = buy_avg / sell_avg if sell_avg > 0 else 0
+            if ratio > 1.6 and not self.too_fluctuating(entries):
+                total = buy_avg + sell_avg
+                result.append({
+                    "symbol": symbol.upper(),
+                    "buy": round((buy_avg / total) * 100, 1),
+                    "sell": round((sell_avg / total) * 100, 1)
+                })
+        return sorted(result, key=lambda x: x["buy"], reverse=True)[:10]
 
-    def too_fluctuating(self, ratios):
+    def too_fluctuating(self, entries):
+        ratios = [b / s if s > 0 else 0 for _, b, s in entries]
         return max(ratios) - min(ratios) > 1.0

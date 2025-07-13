@@ -1,29 +1,34 @@
 import asyncio
 import json
 import websockets
-from buyqueue_logic import BuyQueueAnalyzer
+from buyqueue_logic import BuySellRatioTracker
 
-analyzer = BuyQueueAnalyzer()
+tracker = BuySellRatioTracker()
 
-async def collect_data():
-    stream_url = "wss://stream.binance.com:9443/ws"
-    symbols = ["btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", "linkusdt", "dogeusdt", "avaxusdt", "maticusdt", "xrpusdt"]
-    params = [f"{s}@depth" for s in symbols]
-    stream_payload = {
+async def collect():
+    url = "wss://stream.binance.com:9443/ws"
+    pairs = ["btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"]
+    streams = [f"{pair}@depth5@100ms" for pair in pairs]
+
+    payload = {
         "method": "SUBSCRIBE",
-        "params": params,
+        "params": streams,
         "id": 1
     }
 
-    async with websockets.connect(stream_url, ping_interval=20, ping_timeout=60) as ws:
-        await ws.send(json.dumps(stream_payload))
-        async for msg in ws:
-            data = json.loads(msg)
-            if 'b' in data and 'a' in data:
-                bids = float(data['b'][0][1])
-                asks = float(data['a'][0][1])
-                symbol = data['s'].lower()
-                analyzer.update_coin(symbol, bids, asks)
+    async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
+        await ws.send(json.dumps(payload))
+        async for message in ws:
+            data = json.loads(message)
+            if not ("b" in data and "a" in data and "s" in data):
+                continue
+            symbol = data["s"].lower()
+            try:
+                buy_qty = sum(float(x[1]) for x in data["b"])
+                sell_qty = sum(float(x[1]) for x in data["a"])
+                tracker.update(symbol, buy_qty, sell_qty)
+            except Exception:
+                continue
 
-def get_top_buy_data():
-    return analyzer.get_top_buyers()
+def get_top_buy_queue():
+    return tracker.get_top()

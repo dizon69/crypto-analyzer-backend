@@ -1,17 +1,8 @@
-# backend/app/api/buyqueue.py
-
 from fastapi import APIRouter
-from app.core import globals
+from app.services.binance_ws import get_top_buyqueue
 
 router = APIRouter()
 
 @router.get("/buyqueue")
-async def get_buyqueue():
-    if not globals.buyqueue_analyzer:
-        return {"error": "Analyzer belum siap"}
-
-    try:
-        results = globals.buyqueue_analyzer.analyze()
-        return {"data": results}
-    except Exception as e:
-        return {"error": str(e)}
+def get_buyqueue():
+    return get_top_buyqueue()
