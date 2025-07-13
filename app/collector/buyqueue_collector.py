@@ -1,12 +1,15 @@
 import asyncio
 import json
 import websockets
-from app.core.globals import tracker  # ✅ pakai tracker global
+from app.core.globals import tracker
 
 async def collect():
     print("🔌 Connecting to Binance WebSocket...")
     url = "wss://stream.binance.com:9443/ws"
-    pairs = ["btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"]
+    pairs = [
+        "btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt",
+        "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"
+    ]
     streams = [f"{pair}@depth5@100ms" for pair in pairs]
 
     payload = {
@@ -23,13 +26,11 @@ async def collect():
             data = json.loads(message)
             if not ("b" in data and "a" in data and "s" in data):
                 continue
+
             symbol = data["s"].lower()
             try:
                 buy_qty = sum(float(x[1]) for x in data["b"])
                 sell_qty = sum(float(x[1]) for x in data["a"])
                 tracker.update(symbol, buy_qty, sell_qty)
             except Exception as e:
-                print(f"⚠️ Error on {symbol.upper()}: {e}")
-
-def get_top_buy_queue():
-    return tracker.get_top()
+                print(f"⚠️ Error {symbol.upper()}: {e}")
