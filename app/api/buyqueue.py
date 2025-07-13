@@ -6,4 +6,4 @@ router = APIRouter()
 
 @router.get("/buyqueue")
 def get_buyqueue_raw():
-    return JSONResponse(content=tracker.get_latest())
+    return JSONResponse(content=tracker.get_top())  # ⬅️ INI YANG BENAR
