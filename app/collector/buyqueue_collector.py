@@ -15,6 +15,8 @@ async def collect():
         "id": 1
     }
 
+    cache = {}
+
     async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         await ws.send(json.dumps(payload))
         print("✅ Subscribed to Binance streams")
@@ -23,6 +25,7 @@ async def collect():
             data = json.loads(message)
             if not ("b" in data and "a" in data and "s" in data):
                 continue
+
             symbol = data["s"].upper()
             try:
                 buy_qty = sum(float(x[1]) for x in data["b"])
@@ -30,16 +33,23 @@ async def collect():
                 total = buy_qty + sell_qty
                 if total == 0:
                     continue
+
                 buy_ratio = round((buy_qty / total) * 100, 2)
                 sell_ratio = round((sell_qty / total) * 100, 2)
-                result = [{
+
+                cache[symbol] = {
                     "symbol": symbol,
                     "buy_qty": buy_qty,
                     "sell_qty": sell_qty,
                     "buy_ratio": buy_ratio,
                     "sell_ratio": sell_ratio
-                }]
-                tracker.update(result)
+                }
+
+                # Update tracker tiap minimal 5 coin terkumpul
+                if len(cache) >= 5:
+                    tracker.update(list(cache.values()))
+                    cache.clear()
+
             except Exception as e:
                 print(f"⚠️ Error on {symbol}: {e}")
 
