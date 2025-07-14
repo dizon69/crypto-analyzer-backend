@@ -1,11 +1,12 @@
-### ws/binance_client.py
 import asyncio
 import json
 import websockets
-from logic.buyqueue import BuySellRatioTracker
-from config import PAIRS
+from logic.buyqueue import tracker
 
-tracker = BuySellRatioTracker()
+PAIRS = [
+    "btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", 
+    "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"
+]
 
 async def run_binance_ws():
     stream_list = [f"{pair}@depth5@100ms" for pair in PAIRS]
@@ -20,7 +21,6 @@ async def run_binance_ws():
         await ws.send(json.dumps(payload))
         async for msg in ws:
             data = json.loads(msg)
-            print("DATA MASUK:", data)
             if not all(k in data for k in ("s", "b", "a")):
                 continue
             symbol = data["s"].lower()

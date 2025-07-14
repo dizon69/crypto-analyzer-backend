@@ -1,9 +1,8 @@
-### api/buyqueue.py
 from fastapi import APIRouter
-from globals import last_result
+from logic.buyqueue import tracker
 
 router = APIRouter()
 
 @router.get("/buyqueue")
 def get_buyqueue():
-    return last_result
+    return tracker.get_top_buy_ratio()
