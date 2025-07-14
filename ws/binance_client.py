@@ -1,7 +1,11 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import asyncio
 import json
 import websockets
-from logic.buyqueue import tracker  # pastikan tracker ini sudah ada!
+from logic.buyqueue import tracker  # ini baru bisa!
 
 PAIRS = [
     "btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", 
@@ -9,30 +13,25 @@ PAIRS = [
 ]
 
 async def run_binance_ws():
-    url = "wss://stream.binance.com:9443/stream"
-    streams = [f"{pair}@depth5@100ms" for pair in PAIRS]
+    stream_list = [f"{pair}@depth5@100ms" for pair in PAIRS]
     payload = {
         "method": "SUBSCRIBE",
-        "params": streams,
+        "params": stream_list,
         "id": 1
     }
+    url = "wss://stream.binance.com:9443/ws"
 
     async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         await ws.send(json.dumps(payload))
-        while True:
-            msg = await ws.recv()
+        async for msg in ws:
             data = json.loads(msg)
-
-            if "stream" in data and "data" in data:
-                symbol = data["stream"].split("@")[0]
-                bids = data["data"]["bids"]
-                asks = data["data"]["asks"]
-                buy_qty = sum(float(bid[1]) for bid in bids)
-                sell_qty = sum(float(ask[1]) for ask in asks)
-                # Update ke tracker logic kamu!
-                tracker.update(symbol, buy_qty, sell_qty)
-            else:
-                print("Bukan format multi-stream:", data)
+            if not all(k in data for k in ("s", "b", "a")):
+                continue
+            symbol = data["s"].lower()
+            buy_qty = sum(float(x[1]) for x in data["b"])
+            sell_qty = sum(float(x[1]) for x in data["a"])
+            tracker.update(symbol, buy_qty, sell_qty)
+            print(f"SYMBOL: {symbol} | BUY: {buy_qty} | SELL: {sell_qty}")
 
 if __name__ == "__main__":
     asyncio.run(run_binance_ws())
