@@ -8,6 +8,7 @@ async def periodic_analysis():
     while True:
         last_result.clear()
         last_result.extend(tracker.get_top_buy_ratio())
+        print("Hasil analisa:", hasil)
         await asyncio.sleep(5)
 
 async def main():

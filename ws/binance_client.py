@@ -20,6 +20,7 @@ async def run_binance_ws():
         await ws.send(json.dumps(payload))
         async for msg in ws:
             data = json.loads(msg)
+            print("DATA MASUK:", data)
             if not all(k in data for k in ("s", "b", "a")):
                 continue
             symbol = data["s"].lower()
