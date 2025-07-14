@@ -1,14 +1,13 @@
-### scheduler.py
 import asyncio
 from ws.binance_client import run_binance_ws, tracker
 from globals import last_result
-from logic.buyqueue import BuySellRatioTracker
 
 async def periodic_analysis():
     while True:
         last_result.clear()
-        last_result.extend(tracker.get_top_buy_ratio())
+        hasil = tracker.get_top_buy_ratio()
         print("Hasil analisa:", hasil)
+        last_result.extend(hasil)
         await asyncio.sleep(5)
 
 async def main():
