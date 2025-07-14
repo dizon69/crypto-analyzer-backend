@@ -1,6 +1,7 @@
 import asyncio
 import json
 import websockets
+from logic.buyqueue import tracker  # pastikan tracker ini sudah ada!
 
 PAIRS = [
     "btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", 
@@ -22,14 +23,14 @@ async def run_binance_ws():
             msg = await ws.recv()
             data = json.loads(msg)
 
-            # Untuk multi-stream, data dikirim di key 'stream' dan 'data'
             if "stream" in data and "data" in data:
                 symbol = data["stream"].split("@")[0]
                 bids = data["data"]["bids"]
                 asks = data["data"]["asks"]
                 buy_qty = sum(float(bid[1]) for bid in bids)
                 sell_qty = sum(float(ask[1]) for ask in asks)
-                print(f"SYMBOL: {symbol} | BUY: {buy_qty} | SELL: {sell_qty}")
+                # Update ke tracker logic kamu!
+                tracker.update(symbol, buy_qty, sell_qty)
             else:
                 print("Bukan format multi-stream:", data)
 
