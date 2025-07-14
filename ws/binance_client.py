@@ -20,7 +20,7 @@ async def run_binance_ws():
         "params": stream_list,
         "id": 1
     }
-    url = "wss://stream.binance.com:9443/stream"  # <--- PENTING
+    url = "wss://stream.binance.com:9443/ws"
     async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         await ws.send(json.dumps(payload))
         while True:
