@@ -8,7 +8,7 @@ PAIRS = [
 ]
 
 async def run_binance_ws():
-    url = "wss://stream.binance.com:9443/ws"
+    url = "wss://stream.binance.com:9443/stream"
     streams = [f"{pair}@depth5@100ms" for pair in PAIRS]
     payload = {
         "method": "SUBSCRIBE",
@@ -21,11 +21,17 @@ async def run_binance_ws():
         while True:
             msg = await ws.recv()
             data = json.loads(msg)
-            # Print hanya data WS yang BENAR
-            if "e" in data and "b" in data and "a" in data and "s" in data:
-                print("✅ DATA WS BENAR:", data)
+
+            # Untuk multi-stream, data dikirim di key 'stream' dan 'data'
+            if "stream" in data and "data" in data:
+                symbol = data["stream"].split("@")[0]
+                bids = data["data"]["bids"]
+                asks = data["data"]["asks"]
+                buy_qty = sum(float(bid[1]) for bid in bids)
+                sell_qty = sum(float(ask[1]) for ask in asks)
+                print(f"SYMBOL: {symbol} | BUY: {buy_qty} | SELL: {sell_qty}")
             else:
-                print("❌ DATA BUKAN WS YG DIHARAPKAN:", data)
+                print("Bukan format multi-stream:", data)
 
 if __name__ == "__main__":
     asyncio.run(run_binance_ws())
