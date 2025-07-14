@@ -1,14 +1,10 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import asyncio
 import json
 import websockets
-from logic.buyqueue import tracker  # ini baru bisa!
+from logic.buyqueue import tracker  # pastikan tracker ini udah ada!
 
 PAIRS = [
-    "btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt", 
+    "btcusdt", "ethusdt", "solusdt", "bnbusdt", "adausdt",
     "xrpusdt", "ltcusdt", "dogeusdt", "linkusdt", "avaxusdt"
 ]
 
@@ -23,8 +19,10 @@ async def run_binance_ws():
 
     async with websockets.connect(url, ping_interval=20, ping_timeout=60) as ws:
         await ws.send(json.dumps(payload))
-        async for msg in ws:
+        while True:
+            msg = await ws.recv()
             data = json.loads(msg)
+            # Filter data hanya yang ada "s", "b", "a"
             if not all(k in data for k in ("s", "b", "a")):
                 continue
             symbol = data["s"].lower()
@@ -33,5 +31,5 @@ async def run_binance_ws():
             tracker.update(symbol, buy_qty, sell_qty)
             print(f"SYMBOL: {symbol} | BUY: {buy_qty} | SELL: {sell_qty}")
 
-if __name__ == "__main__":
-    asyncio.run(run_binance_ws())
+# LANGSUNG RUN TANPA IF __main__
+asyncio.run(run_binance_ws())
