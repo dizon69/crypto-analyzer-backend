@@ -27,5 +27,4 @@ class BuySellRatioTracker:
                 })
         return sorted(result, key=lambda x: x["ratio"], reverse=True)[:limit]
 
-# Singleton
 tracker = BuySellRatioTracker()
