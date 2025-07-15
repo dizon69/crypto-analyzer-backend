@@ -22,19 +22,29 @@ function connect() {
   });
 
   ws.on("message", msg => {
-    const { stream, data } = JSON.parse(msg);
-    const symbol = data.s.toLowerCase();
+    try {
+      const { stream, data } = JSON.parse(msg);
 
-    const buyQty = data.b.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
-    const sellQty = data.a.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
+      // Lindungi dari pesan yang tidak sesuai format!
+      if (!data || !data.s || !Array.isArray(data.b) || !Array.isArray(data.a)) {
+        return;
+      }
 
-    const record = { buy: buyQty, sell: sellQty, time: Date.now() };
+      const symbol = data.s.toLowerCase();
+      const buyQty = data.b.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
+      const sellQty = data.a.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
 
-    if (!dataStore[symbol]) dataStore[symbol] = [];
-    dataStore[symbol].push(record);
+      const record = { buy: buyQty, sell: sellQty, time: Date.now() };
 
-    if (dataStore[symbol].length > 5) {
-      dataStore[symbol].shift();
+      if (!dataStore[symbol]) dataStore[symbol] = [];
+      dataStore[symbol].push(record);
+
+      if (dataStore[symbol].length > 5) {
+        dataStore[symbol].shift();
+      }
+    } catch (err) {
+      // Optional: log error parsing JSON, tapi nggak crash
+      // console.error("Error parsing message:", err.message);
     }
   });
 
