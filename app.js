@@ -2,6 +2,9 @@ const fastify = require("fastify")({ logger: true });
 const cors = require("@fastify/cors");
 const buyqueueRoutes = require("./routes/buyqueue");
 
+require("./collector/binance_ws"); // jalankan collector saat server start
+
+
 async function main() {
   // ✅ Aktifkan CORS dengan domain frontend
   await fastify.register(cors, {
