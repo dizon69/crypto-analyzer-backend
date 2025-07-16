@@ -20,7 +20,10 @@ function connect() {
     try {
       const { stream, data } = JSON.parse(msg);
       const symbol = stream.split("@")[0];
-      if (!data?.bids || !data?.asks) return;
+      if (!data?.bids || !data?.asks) {
+        console.log(`⚠️ No bids/asks for ${symbol}`);
+        return;
+      }
 
       const buyQty = data.bids.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
       const sellQty = data.asks.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
@@ -71,6 +74,14 @@ function getTopBuyQueue(limit = 10) {
 
   return result.sort((a, b) => b.ratio - a.ratio).slice(0, limit);
 }
+
+// Tambahan log monitoring isi dequeMap tiap 10 detik
+setInterval(() => {
+  console.log("🔍 Buy Queue Map Snapshot:");
+  for (const [symbol, deque] of dequeMap.entries()) {
+    console.log(`${symbol} => [${deque.map(x => x.ratio.toFixed(2)).join(", ")}]`);
+  }
+}, 10000);
 
 connect();
 
