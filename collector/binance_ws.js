@@ -7,15 +7,13 @@ const symbols = [
 
 const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@100ms`).join('/')}`;
 const dequeMap = new Map();
-const maxlen = 30; // ~3 detik data (100ms x 30)
+const maxlen = 30;
 const minRatio = 1.5;
 
 function connect() {
   const ws = new WebSocket(streamURL);
 
-  ws.on("open", () => {
-    console.log("✅ WebSocket connected.");
-  });
+  ws.on("open", () => console.log("✅ WebSocket connected."));
 
   ws.on("message", (msg) => {
     try {
@@ -36,8 +34,7 @@ function connect() {
     }
   });
 
-  ws.on("pong", () => console.log("📶 Pong received"));
-  ws.on("error", (err) => { console.error("❌ Error:", err); ws.close(); });
+  ws.on("error", (err) => { console.error("❌ WebSocket error:", err); ws.close(); });
   ws.on("close", () => {
     console.warn("🔌 Closed. Reconnecting...");
     setTimeout(connect, 5000);
@@ -48,8 +45,8 @@ function connect() {
   }, 30000);
 }
 
-function printTop10BuyQueue() {
-  const candidates = [];
+function getTopBuyQueue(limit = 10) {
+  const result = [];
 
   for (const [symbol, deque] of dequeMap.entries()) {
     if (deque.length < maxlen) continue;
@@ -57,7 +54,6 @@ function printTop10BuyQueue() {
     const ratios = deque.map(x => x.ratio);
     const stableCount = ratios.filter(r => r >= minRatio).length;
     const isStable = stableCount >= 0.6 * deque.length;
-
     const maxR = Math.max(...ratios);
     const minR = Math.min(...ratios);
     const noSpike = maxR - minR < 2.0;
@@ -66,31 +62,15 @@ function printTop10BuyQueue() {
       const avgBuy = deque.reduce((sum, x) => sum + x.buy, 0) / deque.length;
       const avgSell = deque.reduce((sum, x) => sum + x.sell, 0) / deque.length;
       const avgRatio = avgBuy / (avgSell + 1e-9);
+      const history = deque.slice(-5).map(x => +x.ratio.toFixed(2));
 
-      candidates.push({
-        symbol,
-        buy: avgBuy,
-        sell: avgSell,
-        ratio: avgRatio,
-      });
+      result.push({ symbol, buy: avgBuy, sell: avgSell, ratio: avgRatio, history });
     }
   }
 
-  const top = candidates.sort((a, b) => b.ratio - a.ratio).slice(0, 10);
-
-  console.clear();
-  console.log(`📊 TOP 10 BUY QUEUE (Relaxed Logic):`);
-  if (top.length === 0) {
-    console.log("❌ Belum ada coin yang stabil.");
-  } else {
-    top.forEach((x, i) => {
-      console.log(`${i + 1}. ${x.symbol.toUpperCase()} | Buy: ${x.buy.toFixed(2)} | Sell: ${x.sell.toFixed(2)} | Ratio: ${x.ratio.toFixed(2)}`);
-    });
-  }
+  return result.sort((a, b) => b.ratio - a.ratio).slice(0, limit);
 }
 
-// Tampilkan setiap 3 detik
-setInterval(printTop10BuyQueue, 3000);
-
-// Start
 connect();
+
+module.exports = { getTopBuyQueue };
