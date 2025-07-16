@@ -4,6 +4,7 @@ const cors = require("@fastify/cors");
 
 const webhookRoute = require("./webhook");
 const buyqueueRoutes = require("./routes/buyqueue");
+const debugRoutes = require("./routes/debug"); // ✅ Tambahan untuk debug
 require("./collector/binance_ws"); // ⛓️ Wajib jalan duluan sebelum register route
 
 async function main() {
@@ -19,6 +20,7 @@ async function main() {
   // ✅ Register routes
   await fastify.register(webhookRoute);
   await fastify.register(buyqueueRoutes);
+  await fastify.register(debugRoutes); // ✅ Tambahkan di sini
 
   // ✅ Start server
   fastify.listen({ port: 8000, host: "0.0.0.0" }, (err, address) => {
