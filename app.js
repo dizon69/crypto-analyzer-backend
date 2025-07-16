@@ -1,7 +1,9 @@
 const fastify = require("fastify")({ logger: true });
+const webhookRoute = require('./webhook');
 const cors = require("@fastify/cors");
 const buyqueueRoutes = require("./routes/buyqueue");
 
+app.register(webhookRoute);
 require("./collector/binance_ws"); // jalankan collector saat server start
 
 
