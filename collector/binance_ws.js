@@ -83,3 +83,8 @@ connect();
 
 // ✅ Simpan global biar bisa diakses dari route
 global.cryptoAnalyzer = { getTopBuyQueue };
+
+module.exports = {
+  buyQueueMap: dequeMap,
+  getTopBuyQueue: global.cryptoAnalyzer.getTopBuyQueue
+};
