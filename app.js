@@ -3,21 +3,17 @@ const webhookRoute = require('./webhook');
 const cors = require("@fastify/cors");
 const buyqueueRoutes = require("./routes/buyqueue");
 
-app.register(webhookRoute);
-require("./collector/binance_ws"); // jalankan collector saat server start
-
+fastify.register(webhookRoute); // ✅ ganti dari app → fastify
+require("./collector/binance_ws");
 
 async function main() {
-  // ✅ Aktifkan CORS dengan domain frontend
   await fastify.register(cors, {
     origin: ["https://crypto-analyzer.com", "https://www.crypto-analyzer.com"],
     methods: ["GET"],
   });
 
-  // ✅ Daftarkan route
   fastify.register(buyqueueRoutes);
 
-  // ✅ Start server
   fastify.listen({ port: 8000, host: "0.0.0.0" }, (err) => {
     if (err) {
       fastify.log.error(err);
