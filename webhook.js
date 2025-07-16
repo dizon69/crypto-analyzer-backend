@@ -9,7 +9,7 @@ async function webhookRoute(fastify, opts) {
 
     fastify.log.info('📦 Push event diterima, menarik perubahan...');
 
-    exec('git pull origin main && pm2 restart backend', (err, stdout, stderr) => {
+    xec('./deploy.sh', (err, stdout, stderr) => {
       if (err) {
         fastify.log.error(`❌ Gagal update: ${stderr}`);
         return reply.code(500).send({ error: 'Gagal update' });
