@@ -1,27 +1,32 @@
+// app.js
 const fastify = require("fastify")({ logger: true });
 const cors = require("@fastify/cors");
 
-const webhookRoute = require('./webhook');
+const webhookRoute = require("./webhook");
 const buyqueueRoutes = require("./routes/buyqueue");
-require("./collector/binance_ws"); // jalankan collector saat server start
+require("./collector/binance_ws"); // ⛓️ Wajib jalan duluan sebelum register route
 
 async function main() {
-  // ✅ Aktifkan CORS
+  // ✅ Enable CORS
   await fastify.register(cors, {
-    origin: ["https://crypto-analyzer.com", "https://www.crypto-analyzer.com"],
+    origin: [
+      "https://crypto-analyzer.com",
+      "https://www.crypto-analyzer.com"
+    ],
     methods: ["GET"],
   });
 
-  // ✅ Daftarkan semua route di dalam main()
+  // ✅ Register routes
   await fastify.register(webhookRoute);
   await fastify.register(buyqueueRoutes);
 
   // ✅ Start server
-  fastify.listen({ port: 8000, host: "0.0.0.0" }, (err) => {
+  fastify.listen({ port: 8000, host: "0.0.0.0" }, (err, address) => {
     if (err) {
       fastify.log.error(err);
       process.exit(1);
     }
+    fastify.log.info(`🚀 Server running at ${address}`);
   });
 }
 

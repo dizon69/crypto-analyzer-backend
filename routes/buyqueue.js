@@ -7,7 +7,7 @@ async function routes(fastify, opts) {
     return getTopBuyQueue();
   });
 
-  // ✅ Endpoint debug untuk cek isi raw dequeMap (via curl)
+  // Endpoint debug
   fastify.get("/debug/deque", async (req, reply) => {
     const result = {};
     for (const [symbol, deque] of dequeMap.entries()) {
