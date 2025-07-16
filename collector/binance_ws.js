@@ -7,8 +7,8 @@ const symbols = [
 
 const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@100ms`).join('/')}`;
 const dequeMap = new Map();
-const maxlen = 50; // ~5 detik data (100ms x 50)
-const minRatio = 1.6;
+const maxlen = 30; // ~3 detik data (100ms x 30)
+const minRatio = 1.5;
 
 function connect() {
   const ws = new WebSocket(streamURL);
@@ -49,7 +49,6 @@ function connect() {
 }
 
 function printTop10BuyQueue() {
-  const now = Date.now();
   const candidates = [];
 
   for (const [symbol, deque] of dequeMap.entries()) {
@@ -57,11 +56,11 @@ function printTop10BuyQueue() {
 
     const ratios = deque.map(x => x.ratio);
     const stableCount = ratios.filter(r => r >= minRatio).length;
-    const isStable = stableCount >= 0.8 * maxlen;
+    const isStable = stableCount >= 0.6 * deque.length;
 
     const maxR = Math.max(...ratios);
     const minR = Math.min(...ratios);
-    const noSpike = maxR - minR < 1.0;
+    const noSpike = maxR - minR < 2.0;
 
     if (isStable && noSpike) {
       const avgBuy = deque.reduce((sum, x) => sum + x.buy, 0) / deque.length;
@@ -80,14 +79,18 @@ function printTop10BuyQueue() {
   const top = candidates.sort((a, b) => b.ratio - a.ratio).slice(0, 10);
 
   console.clear();
-  console.log(`📊 TOP 10 BUY QUEUE (Stabil >${minRatio}, anti spike):`);
-  top.forEach((x, i) => {
-    console.log(`${i + 1}. ${x.symbol.toUpperCase()} | Buy: ${x.buy.toFixed(2)} | Sell: ${x.sell.toFixed(2)} | Ratio: ${x.ratio.toFixed(2)}`);
-  });
+  console.log(`📊 TOP 10 BUY QUEUE (Relaxed Logic):`);
+  if (top.length === 0) {
+    console.log("❌ Belum ada coin yang stabil.");
+  } else {
+    top.forEach((x, i) => {
+      console.log(`${i + 1}. ${x.symbol.toUpperCase()} | Buy: ${x.buy.toFixed(2)} | Sell: ${x.sell.toFixed(2)} | Ratio: ${x.ratio.toFixed(2)}`);
+    });
+  }
 }
 
-// Tampilkan hanya setiap 3 detik, biar gak kecepatan
+// Tampilkan setiap 3 detik
 setInterval(printTop10BuyQueue, 3000);
 
-// Run
+// Start
 connect();
