@@ -1,12 +1,17 @@
 // routes/debug.js
-const { dequeMap } = require("../collector/binance_ws");
+const { buyQueueMap } = require("../collector/binance_ws");
 
 async function routes(fastify, opts) {
   fastify.get("/__debug/deque", async (req, reply) => {
-    const result = {};
-    for (const [symbol, deque] of dequeMap.entries()) {
-      result[symbol] = deque.map(x => +x.ratio.toFixed(2));
+    if (!buyQueueMap) {
+      return reply.status(500).send({ error: "buyQueueMap is undefined" });
     }
+
+    const result = {};
+    for (const [symbol, deque] of buyQueueMap.entries()) {
+      result[symbol] = deque.map(x => Number(x.ratio.toFixed(2)));
+    }
+
     return result;
   });
 }
