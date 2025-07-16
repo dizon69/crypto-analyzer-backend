@@ -1,5 +1,4 @@
 const WebSocket = require("ws");
-const { setInterval } = require("timers");
 
 const symbols = [
   "btcusdt", "ethusdt", "bnbusdt", "solusdt", "adausdt",
@@ -7,8 +6,8 @@ const symbols = [
 ];
 
 const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@100ms`).join('/')}`;
-const dequeMap = new Map(); // symbol => [{ time, buy, sell }]
-const maxlen = 5;
+const dequeMap = new Map();
+const maxlen = 50; // ~5 detik data (100ms x 50)
 const minRatio = 1.6;
 
 function connect() {
@@ -30,7 +29,6 @@ function connect() {
 
       const deque = dequeMap.get(symbol) || [];
       deque.push({ time: Date.now(), buy: buyQty, sell: sellQty, ratio });
-
       if (deque.length > maxlen) deque.shift();
       dequeMap.set(symbol, deque);
     } catch (err) {
@@ -45,16 +43,12 @@ function connect() {
     setTimeout(connect, 5000);
   });
 
-  // Ping tiap 30 detik
   setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.ping();
-      console.log("📡 Ping sent");
-    }
-  }, 30_000);
+    if (ws.readyState === WebSocket.OPEN) ws.ping();
+  }, 30000);
 }
 
-function printStableBuyQueue() {
+function printTop10BuyQueue() {
   const now = Date.now();
   const candidates = [];
 
@@ -62,14 +56,14 @@ function printStableBuyQueue() {
     if (deque.length < maxlen) continue;
 
     const ratios = deque.map(x => x.ratio);
-    const stable = ratios.every(r => r >= minRatio);
+    const stableCount = ratios.filter(r => r >= minRatio).length;
+    const isStable = stableCount >= 0.8 * maxlen;
 
-    // Hindari spike: rasio naik-turun tajam
     const maxR = Math.max(...ratios);
     const minR = Math.min(...ratios);
-    const stableEnough = maxR - minR < 1.0;
+    const noSpike = maxR - minR < 1.0;
 
-    if (stable && stableEnough) {
+    if (isStable && noSpike) {
       const avgBuy = deque.reduce((sum, x) => sum + x.buy, 0) / deque.length;
       const avgSell = deque.reduce((sum, x) => sum + x.sell, 0) / deque.length;
       const avgRatio = avgBuy / (avgSell + 1e-9);
@@ -83,19 +77,17 @@ function printStableBuyQueue() {
     }
   }
 
-  const top = candidates
-    .sort((a, b) => b.ratio - a.ratio)
-    .slice(0, 10);
+  const top = candidates.sort((a, b) => b.ratio - a.ratio).slice(0, 10);
 
   console.clear();
-  console.log("📊 TOP 10 BUY QUEUE (Filtered):");
+  console.log(`📊 TOP 10 BUY QUEUE (Stabil >${minRatio}, anti spike):`);
   top.forEach((x, i) => {
     console.log(`${i + 1}. ${x.symbol.toUpperCase()} | Buy: ${x.buy.toFixed(2)} | Sell: ${x.sell.toFixed(2)} | Ratio: ${x.ratio.toFixed(2)}`);
   });
 }
 
-// Refresh tampilan setiap detik
-setInterval(printStableBuyQueue, 1000);
+// Tampilkan hanya setiap 3 detik, biar gak kecepatan
+setInterval(printTop10BuyQueue, 3000);
 
-// Start
+// Run
 connect();
