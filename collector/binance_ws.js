@@ -1,3 +1,4 @@
+// collector/binance_ws.js
 const WebSocket = require("ws");
 
 const symbols = [
@@ -7,7 +8,7 @@ const symbols = [
 
 const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@100ms`).join('/')}`;
 const dequeMap = new Map();
-const maxlen = 10; // Lebih ringan, data cepat terkumpul
+const maxlen = 10;
 const minRatio = 1.5;
 
 function connect() {
@@ -53,7 +54,7 @@ function getTopBuyQueue(limit = 10) {
 
     const ratios = deque.map(x => x.ratio);
     const stableCount = ratios.filter(r => r >= minRatio).length;
-    const isStable = stableCount >= 0.4 * deque.length; // lebih toleran
+    const isStable = stableCount >= 0.4 * deque.length;
     const maxR = Math.max(...ratios);
     const minR = Math.min(...ratios);
     const noSpike = maxR - minR < 3.0;
