@@ -1,8 +1,19 @@
-const buyqueue = require("../services/buyqueue");
+const { getTopBuyQueue } = require("../services/buyqueue");
+const { dequeMap } = require("../collector/binance_ws");
 
 async function routes(fastify, opts) {
+  // Endpoint utama untuk frontend
   fastify.get("/buyqueue", async (req, reply) => {
-    return buyqueue.getTopBuyQueue();
+    return getTopBuyQueue();
+  });
+
+  // ✅ Endpoint debug untuk cek isi raw dequeMap (via curl)
+  fastify.get("/debug/deque", async (req, reply) => {
+    const result = {};
+    for (const [symbol, deque] of dequeMap.entries()) {
+      result[symbol] = deque.map(x => x.ratio.toFixed(2));
+    }
+    return result;
   });
 }
 
