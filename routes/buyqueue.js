@@ -1,8 +1,9 @@
-const { getTopBuyQueue } = require("../collector/binance_ws");
+const buyqueue = require("../services/buyqueue");
 
-module.exports = {
-  getTopBuyQueue: () => {
-    const data = getTopBuyQueue();
-    return { data };
-  }
-};
+async function routes(fastify, opts) {
+  fastify.get("/buyqueue", async (req, reply) => {
+    return buyqueue.getTopBuyQueue();
+  });
+}
+
+module.exports = routes;
