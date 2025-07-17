@@ -1,6 +1,6 @@
 const { buyQueueMap } = require("../collector/binance_ws");
 
-async function routes(fastify, opts) {
+async function debugRoutes(fastify, opts) {
   fastify.get("/__debug/deque", async (req, reply) => {
     if (!buyQueueMap || buyQueueMap.size === 0) {
       return reply.send({ error: "buyQueueMap is undefined or empty" });
@@ -15,4 +15,4 @@ async function routes(fastify, opts) {
   });
 }
 
-module.exports = routes;
+module.exports = debugRoutes;
