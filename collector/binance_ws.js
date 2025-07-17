@@ -57,29 +57,64 @@ function connect() {
 
 function getTopBuyQueue(limit = 10) {
   const result = [];
+  const spoofThreshold = 10;    // Rasio yang terlalu tinggi = kemungkinan spoofing
+  const spikeThreshold = 3.0;   // Perbedaan max-min ratio agar dianggap stabil
+  const minRatio = 1.5;         // Batas bullish
+  // maxlen tetap ambil dari variabel di atas
 
   for (const [symbol, deque] of dequeMap.entries()) {
     if (deque.length < maxlen) continue;
 
     const ratios = deque.map(x => x.ratio);
-    const stableCount = ratios.filter(r => r >= minRatio).length;
-    const isStable = stableCount >= 0.4 * deque.length;
+    const lastRatio = ratios[ratios.length - 1];
+    const avgRatio = ratios.reduce((a, b) => a + b, 0) / ratios.length;
     const maxR = Math.max(...ratios);
     const minR = Math.min(...ratios);
-    const noSpike = maxR - minR < 3.0;
 
+    // === LOGIKA ANTI-SPOOFING & SPIKE ===
+    const bigSpike = maxR > avgRatio * 3; // Spike ekstrem 3x rata-rata window
+    const isSpoofing = lastRatio > spoofThreshold || bigSpike;
+
+    // === LOGIKA STABILITAS ===
+    const stableCount = ratios.filter(r => r >= minRatio).length;
+    const isStable = stableCount >= 0.4 * deque.length;
+    const noSpike = maxR - minR < spikeThreshold;
+
+    // === STATUS SIGNAL ===
+    const isHot = isStable && noSpike && !isSpoofing && lastRatio >= minRatio;
+    const status = isSpoofing
+      ? "spoofing"
+      : isHot
+      ? "hot"
+      : isStable
+      ? "stabil"
+      : "lesu";
+
+    // === DATA DIKIRIM KE FRONTEND ===
     if (isStable && noSpike) {
       const avgBuy = deque.reduce((sum, x) => sum + x.buy, 0) / deque.length;
       const avgSell = deque.reduce((sum, x) => sum + x.sell, 0) / deque.length;
-      const avgRatio = avgBuy / (avgSell + 1e-9);
       const history = deque.slice(-5).map(x => +x.ratio.toFixed(2));
 
-      result.push({ symbol, buy: avgBuy, sell: avgSell, ratio: avgRatio, history });
+      result.push({
+        symbol,
+        buy: avgBuy,
+        sell: avgSell,
+        ratio: avgRatio,
+        lastRatio,
+        history,
+        isStable,
+        isHot,
+        isSpoofing,
+        status // "spoofing" | "hot" | "stabil" | "lesu"
+      });
     }
   }
 
+  // Urutkan ratio tertinggi, ambil top N
   return result.sort((a, b) => b.ratio - a.ratio).slice(0, limit);
 }
+
 
 connect();
 
