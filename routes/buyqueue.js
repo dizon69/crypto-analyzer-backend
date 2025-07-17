@@ -3,7 +3,7 @@ const { dequeMap } = require("../collector/binance_ws");
 
 async function routes(fastify, opts) {
   // Endpoint utama untuk frontend
-  fastify.get("/buyqueue", async (req, reply) => {
+  fastify.get("/buyqueue/debug", async (req, reply) => {
     return getTopBuyQueue();
   });
 
