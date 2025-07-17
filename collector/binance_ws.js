@@ -2,8 +2,10 @@
 const WebSocket = require("ws");
 
 const symbols = [
-  "btcusdt", "ethusdt", "bnbusdt", "solusdt", "adausdt",
-  "xrpusdt", "dogeusdt", "maticusdt", "ltcusdt", "linkusdt"
+   "btcusdt", "ethusdt", "bnbusdt", "adausdt", "ltcusdt",
+  "dogeusdt", "xrpusdt", "linkusdt", "solusdt", "maticusdt",
+  "avaxusdt", "dotusdt", "trxusdt", "bchusdt", "uniusdt",
+  "atomusdt", "etcusdt", "opusdt", "nearusdt", "xlmusdt"
 ];
 
 const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@100ms`).join('/')}`;
