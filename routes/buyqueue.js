@@ -1,3 +1,5 @@
+// routes/buyqueue.js
+
 const { getTopBuyQueue } = require("../services/buyqueue");
 
 async function routes(fastify, opts) {
