@@ -1,17 +1,23 @@
 // collector/binance_ws.js
+
 const WebSocket = require("ws");
 
 const symbols = [
-   "btcusdt", "ethusdt", "bnbusdt", "adausdt", "ltcusdt",
+  "btcusdt", "ethusdt", "bnbusdt", "adausdt", "ltcusdt",
   "dogeusdt", "xrpusdt", "linkusdt", "solusdt", "maticusdt",
   "avaxusdt", "dotusdt", "trxusdt", "bchusdt", "uniusdt",
-  "atomusdt", "etcusdt", "opusdt", "nearusdt", "xlmusdt"
+  "atomusdt", "etcusdt", "opusdt", "nearusdt", "xlmusdt",
+  "enausdt", "taousdt", "seiusdt", "1000satsusdt", "fetusdt"
 ];
 
-const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@100ms`).join('/')}`;
+const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@1000ms`).join('/')}`;
 const dequeMap = new Map();
+
 const maxlen = 10;
-const minRatio = 1.5;
+const minRatio = 1.6;
+const spoofThreshold = 10;
+const spikeThreshold = 3.0;
+const minBuySellQty = 100;
 
 function connect() {
   const ws = new WebSocket(streamURL);
@@ -27,6 +33,10 @@ function connect() {
       const buyQty = data.bids.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
       const sellQty = data.asks.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
       const ratio = sellQty === 0 ? 0 : buyQty / sellQty;
+
+      // ❌ Filter data mentah: skip jika antrian kecil atau rasio terlalu ekstrem
+      if (buyQty < minBuySellQty || sellQty < minBuySellQty) return;
+      if (ratio > 100 || ratio < 0.01) return;
 
       const deque = dequeMap.get(symbol) || [];
       deque.push({ time: Date.now(), buy: buyQty, sell: sellQty, ratio });
@@ -57,10 +67,6 @@ function connect() {
 
 function getTopBuyQueue(limit = 10) {
   const result = [];
-  const spoofThreshold = 10;    // Rasio yang terlalu tinggi = kemungkinan spoofing
-  const spikeThreshold = 3.0;   // Perbedaan max-min ratio agar dianggap stabil
-  const minRatio = 1.5;         // Batas bullish
-  // maxlen tetap ambil dari variabel di atas
 
   for (const [symbol, deque] of dequeMap.entries()) {
     if (deque.length < maxlen) continue;
@@ -70,17 +76,17 @@ function getTopBuyQueue(limit = 10) {
     const avgRatio = ratios.reduce((a, b) => a + b, 0) / ratios.length;
     const maxR = Math.max(...ratios);
     const minR = Math.min(...ratios);
+    const volatility = maxR - minR;
 
-    // === LOGIKA ANTI-SPOOFING & SPIKE ===
-    const bigSpike = maxR > avgRatio * 3; // Spike ekstrem 3x rata-rata window
-    const isSpoofing = lastRatio > spoofThreshold || bigSpike;
+    // 🧠 Deteksi spoofing lebih tajam
+    const spikeTooFast = volatility > spikeThreshold;
+    const spoofRasio = lastRatio > spoofThreshold;
+    const isSpoofing = spoofRasio || spikeTooFast;
 
-    // === LOGIKA STABILITAS ===
     const stableCount = ratios.filter(r => r >= minRatio).length;
     const isStable = stableCount >= 0.4 * deque.length;
-    const noSpike = maxR - minR < spikeThreshold;
+    const noSpike = volatility < spikeThreshold;
 
-    // === STATUS SIGNAL ===
     const isHot = isStable && noSpike && !isSpoofing && lastRatio >= minRatio;
     const status = isSpoofing
       ? "spoofing"
@@ -90,7 +96,6 @@ function getTopBuyQueue(limit = 10) {
       ? "stabil"
       : "lesu";
 
-    // === DATA DIKIRIM KE FRONTEND ===
     if (isStable && noSpike) {
       const avgBuy = deque.reduce((sum, x) => sum + x.buy, 0) / deque.length;
       const avgSell = deque.reduce((sum, x) => sum + x.sell, 0) / deque.length;
@@ -106,22 +111,20 @@ function getTopBuyQueue(limit = 10) {
         isStable,
         isHot,
         isSpoofing,
-        status // "spoofing" | "hot" | "stabil" | "lesu"
+        status
       });
     }
   }
 
-  // Urutkan ratio tertinggi, ambil top N
   return result.sort((a, b) => b.ratio - a.ratio).slice(0, limit);
 }
 
-
 connect();
 
-// ✅ Simpan global biar bisa diakses dari route
 global.cryptoAnalyzer = { getTopBuyQueue };
 
 module.exports = {
   buyQueueMap: dequeMap,
   getTopBuyQueue: global.cryptoAnalyzer.getTopBuyQueue
 };
+
