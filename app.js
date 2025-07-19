@@ -5,6 +5,7 @@ const { startDepthCollector } = require('./collector/depth_collector');
 const { updateVolume24h } = require('./services/snapshot.service');
 const symbols = require('./config/symbols');
 
+app.register(require('./routes/depth.route'));
 app.register(require('./routes/snapshot.route'));
 
 // Fetch volume 24h setiap 5 menit
