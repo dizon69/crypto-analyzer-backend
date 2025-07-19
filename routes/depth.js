@@ -1,7 +1,15 @@
 // routes/depth.js
 const fp = require("fastify-plugin");
-const { getDepthData } = require("../services/depth");
+const { getTopDepthStatus } = require("../services/depth");
 
 module.exports = fp(async function (fastify, opts) {
-  fastify.get("/depth", getDepthData);
+  fastify.get("/depth", async (request, reply) => {
+    try {
+      const result = getTopDepthStatus();
+      return { success: true, data: result };
+    } catch (err) {
+      fastify.log.error(err);
+      reply.code(500).send({ success: false, error: "Internal Server Error" });
+    }
+  });
 });

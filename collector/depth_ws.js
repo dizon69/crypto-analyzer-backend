@@ -1,6 +1,5 @@
 // collector/depth_ws.js
 const WebSocket = require("ws");
-const { calcDepthRatio } = require("./depth_logic");
 const Deque = require("collections/deque");
 
 const symbols = [
@@ -16,6 +15,34 @@ const depthMap = new Map();
 const depthHistoryMap = new Map();
 const maxlen = 10;
 const minRatio = 1.6;
+
+function calcDepthRatio(data, options = {}) {
+  const bids = data.bids.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]);
+  const asks = data.asks.map(([price, qty]) => [parseFloat(price), parseFloat(qty)]);
+
+  const buyWall = bids.find(([, qty]) => qty >= options.wallThreshold);
+  const sellWall = asks.find(([, qty]) => qty >= options.wallThreshold);
+
+  const buyQty = bids.reduce((sum, [, qty]) => sum + qty, 0);
+  const sellQty = asks.reduce((sum, [, qty]) => sum + qty, 0);
+
+  const topBid = bids[0]?.[0] || 0;
+  const topAsk = asks[0]?.[0] || 0;
+  const spread = topAsk - topBid;
+
+  return {
+    ratio: sellQty === 0 ? 0 : buyQty / sellQty,
+    buyQty,
+    sellQty,
+    hasBuyWall: !!buyWall,
+    hasSellWall: !!sellWall,
+    volatility: spread,
+    spoofing: (buyWall && spread > options.volatilityThreshold),
+    topBid,
+    topAsk,
+    spread
+  };
+}
 
 function connectDepthWebSocket() {
   const ws = new WebSocket(streamURL);
@@ -68,7 +95,7 @@ function connectDepthWebSocket() {
         ...depth,
         biggestBuyerQty: parseFloat(data.bids[0]?.[1] || 0),
         biggestSellerQty: parseFloat(data.asks[0]?.[1] || 0),
-        priceGap: parseFloat(data.asks[0]?.[0] || 0) - parseFloat(data.bids[0]?.[0] || 0),
+        priceGap: depth.spread,
         time: Date.now(),
         status,
         severity,
@@ -105,8 +132,6 @@ function getTopDepthStatus(limit = 10) {
 
 connectDepthWebSocket();
 
-global.cryptoAnalyzerDepth = { getTopDepthStatus };
-
 module.exports = {
-  getTopDepthStatus: global.cryptoAnalyzerDepth.getTopDepthStatus
+  getTopDepthStatus
 };
