@@ -1,18 +1,15 @@
-// collector/binance_ws.js
-
 const WebSocket = require("ws");
 
-const symbols = [
+// Gunakan endpoint futures
+const streamURL = `wss://fstream.binance.com/stream?streams=${[
   "btcusdt", "ethusdt", "bnbusdt", "adausdt", "ltcusdt",
   "dogeusdt", "xrpusdt", "linkusdt", "solusdt", "maticusdt",
   "avaxusdt", "dotusdt", "trxusdt", "bchusdt", "uniusdt",
   "atomusdt", "etcusdt", "opusdt", "nearusdt", "xlmusdt",
   "enausdt", "taousdt", "seiusdt", "1000satsusdt", "fetusdt"
-];
+].map(s => `${s}@depth5@1000ms`).join("/")}`;
 
-const streamURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@depth5@1000ms`).join('/')}`;
 const dequeMap = new Map();
-
 const maxlen = 10;
 const minRatio = 1.6;
 const spoofThreshold = 10;
@@ -22,19 +19,18 @@ const minBuySellQty = 100;
 function connect() {
   const ws = new WebSocket(streamURL);
 
-  ws.on("open", () => console.log("✅ WebSocket connected."));
+  ws.on("open", () => console.log("✅ Connected to Binance Futures WS"));
 
   ws.on("message", (msg) => {
     try {
       const { stream, data } = JSON.parse(msg);
       const symbol = stream.split("@")[0];
-      if (!data?.bids || !data?.asks) return;
+      if (!data?.b || !data?.a) return;
 
-      const buyQty = data.bids.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
-      const sellQty = data.asks.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
+      const buyQty = data.b.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
+      const sellQty = data.a.reduce((sum, [, qty]) => sum + parseFloat(qty), 0);
       const ratio = sellQty === 0 ? 0 : buyQty / sellQty;
 
-      // ❌ Filter data mentah: skip jika antrian kecil atau rasio terlalu ekstrem
       if (buyQty < minBuySellQty || sellQty < minBuySellQty) return;
       if (ratio > 100 || ratio < 0.01) return;
 
@@ -43,13 +39,17 @@ function connect() {
       if (deque.length > maxlen) deque.shift();
       dequeMap.set(symbol, deque);
     } catch (err) {
-      console.error("❌ Parse error:", err);
+      console.error("❌ WS parse error:", err);
     }
   });
 
-  ws.on("error", (err) => { console.error("❌ WebSocket error:", err); ws.close(); });
+  ws.on("error", (err) => {
+    console.error("❌ WebSocket error:", err);
+    ws.close();
+  });
+
   ws.on("close", () => {
-    console.warn("🔌 Closed. Reconnecting...");
+    console.warn("🔌 WebSocket closed. Reconnecting...");
     setTimeout(connect, 5000);
   });
 
@@ -58,7 +58,7 @@ function connect() {
   }, 30000);
 
   setInterval(() => {
-    console.log("🔍 Buy Queue Map Snapshot:");
+    console.log("📊 Futures Buy Queue Snapshot:");
     for (const [symbol, deque] of dequeMap.entries()) {
       console.log(`${symbol} => [${deque.map(x => x.ratio.toFixed(2)).join(", ")}]`);
     }
@@ -78,7 +78,6 @@ function getTopBuyQueue(limit = 10) {
     const minR = Math.min(...ratios);
     const volatility = maxR - minR;
 
-    // 🧠 Deteksi spoofing lebih tajam
     const spikeTooFast = volatility > spikeThreshold;
     const spoofRasio = lastRatio > spoofThreshold;
     const isSpoofing = spoofRasio || spikeTooFast;
@@ -127,4 +126,3 @@ module.exports = {
   buyQueueMap: dequeMap,
   getTopBuyQueue: global.cryptoAnalyzer.getTopBuyQueue
 };
-

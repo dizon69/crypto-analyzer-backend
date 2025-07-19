@@ -28,7 +28,6 @@ async function main() {
   // Register routes
   await fastify.register(webhookRoute);
   await fastify.register(buyqueueRoutes);
-  await fastify.register(debugRoutes);
   await fastify.register(depthRoutes); // ✅ Tambahkan ini
 
   fastify.listen({ port: 8000, host: "0.0.0.0" }, (err, address) => {
