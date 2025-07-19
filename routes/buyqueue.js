@@ -1,5 +1,5 @@
 const { getTopBuyQueue } = require("../services/buyqueue");
-const { dequeMap } = require("../collector/binance_ws");
+const { dequeMap } = require("../collector/binance_ws_futures");
 
 async function routes(fastify, opts) {
   // Endpoint utama untuk frontend

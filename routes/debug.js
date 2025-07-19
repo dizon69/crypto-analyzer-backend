@@ -1,4 +1,4 @@
-const { buyQueueMap } = require("../collector/binance_ws");
+const { buyQueueMap } = require("../collector/binance_ws_futures");
 
 async function debugRoutes(fastify, opts) {
   fastify.get("/__debug/deque", async (req, reply) => {
