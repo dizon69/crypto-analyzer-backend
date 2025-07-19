@@ -4,10 +4,11 @@ const cors = require("@fastify/cors");
 const webhookRoute = require("./webhook");
 const buyqueueRoutes = require("./routes/buyqueue");
 const debugRoutes = require("./routes/debug");
+const depthRoutes = require("./routes/depth"); // ✅ Tambahkan ini
 require("./collector/binance_ws");
+require("./collector/depth_ws"); // ✅ Jangan lupa koneksikan WS-nya
 
 async function main() {
-  // ✅ Fix CORS: pakai function, bukan array!
   await fastify.register(cors, {
     origin: (origin, cb) => {
       const whitelist = [
@@ -28,8 +29,8 @@ async function main() {
   await fastify.register(webhookRoute);
   await fastify.register(buyqueueRoutes);
   await fastify.register(debugRoutes);
+  await fastify.register(depthRoutes); // ✅ Tambahkan ini
 
-  // Start server
   fastify.listen({ port: 8000, host: "0.0.0.0" }, (err, address) => {
     if (err) {
       fastify.log.error(err);
