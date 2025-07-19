@@ -3,7 +3,6 @@ const cors = require("@fastify/cors");
 
 const webhookRoute = require("./webhook");
 const buyqueueRoutes = require("./routes/buyqueue");
-const debugRoutes = require("./routes/debug");
 const depthRoutes = require("./routes/depth"); // ✅ Tambahkan ini
 require("./collector/binance_ws_futures");
 require("./collector/depth_ws"); // ✅ Jangan lupa koneksikan WS-nya
