@@ -1,7 +1,7 @@
 const Fastify = require('fastify');
 const app = Fastify();
-const { startTradeCollector } = require('./collectors/trade_collector');
-const { startDepthCollector } = require('./collectors/depth_collector');
+const { startTradeCollector } = require('./collector/trade_collector');
+const { startDepthCollector } = require('./collector/depth_collector');
 const { updateVolume24h } = require('./services/snapshot.service');
 const symbols = require('./config/symbols');
 
