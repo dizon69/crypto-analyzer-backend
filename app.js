@@ -1,41 +1,27 @@
-const fastify = require("fastify")({ logger: true });
-const cors = require("@fastify/cors");
+const Fastify = require('fastify');
+const app = Fastify();
+const { startTradeCollector } = require('./collectors/trade_collector');
+const { startDepthCollector } = require('./collectors/depth_collector');
+const { updateVolume24h } = require('./services/snapshot.service');
+const symbols = require('./config/symbols');
 
-const webhookRoute = require("./webhook");
-const buyqueueRoutes = require("./routes/buyqueue");
-const depthRoutes = require("./routes/depth"); // ✅ Tambahkan ini
-require("./collector/binance_ws_futures");
-require("./collector/depth_ws"); // ✅ Jangan lupa koneksikan WS-nya
+app.register(require('./routes/snapshot.route'));
 
-async function main() {
-  await fastify.register(cors, {
-    origin: (origin, cb) => {
-      const whitelist = [
-        "https://crypto-analyzer.com",
-        "https://www.crypto-analyzer.com",
-        undefined, // for local/curl access
-      ];
-      if (whitelist.includes(origin)) {
-        cb(null, true);
-      } else {
-        cb(new Error("Not allowed by CORS"), false);
-      }
-    },
-    methods: ["GET"],
-  });
-
-  // Register routes
-  await fastify.register(webhookRoute);
-  await fastify.register(buyqueueRoutes);
-  await fastify.register(depthRoutes); // ✅ Tambahkan ini
-
-  fastify.listen({ port: 8000, host: "0.0.0.0" }, (err, address) => {
-    if (err) {
-      fastify.log.error(err);
-      process.exit(1);
-    }
-    fastify.log.info(`🚀 Server running at ${address}`);
-  });
+// Fetch volume 24h setiap 5 menit
+async function fetchVolume24h() {
+  try {
+    const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+    const data = await res.json();
+    updateVolume24h(data.filter(d => symbols.includes(d.symbol.toLowerCase())));
+  } catch (e) {
+    console.error('Failed to fetch 24h volume', e);
+  }
 }
+setInterval(fetchVolume24h, 1000 * 60 * 5);
+fetchVolume24h();
 
-main();
+// Start
+startTradeCollector();
+startDepthCollector();
+
+app.listen({ port: 3000 }, () => console.log('Server running at http://localhost:3000'));
