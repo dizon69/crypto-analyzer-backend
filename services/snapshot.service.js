@@ -1,4 +1,8 @@
+//services/snapshot.service.js
+
 const { formatUSD, getTimeNow } = require('../utils/formatter');
+const { setSnapshotData } = require('../collector/rank_tracker');
+
 
 const state = new Map(); // { symbol => { trade, depth, volume24h, trend, duration } }
 
@@ -73,6 +77,10 @@ function getSnapshot() {
       depth_status: depthStatus
     });
   }
+
+
+  setSnapshotData(result); // ⬅️ tracking top10 ranking realtime
+
 
   return result
     .sort((a, b) => parseFloat(b.transaction_volume_ratio.split(':')[0]) - parseFloat(a.transaction_volume_ratio.split(':')[0]))
