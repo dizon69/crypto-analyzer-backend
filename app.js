@@ -14,8 +14,8 @@ async function startServer() {
     methods: ['GET'],
   });
 
-  app.register(require('./routes/snapshot.route'));
-  // app.register(require('./routes/depth.route')); // kalau ingin aktifkan depth
+  app.register(require('./routes/snapshot.route')); //tempat snapshot
+  app.register(require('./routes/topranked.route')); //tampat ranking snapshot
 
   // Fetch volume 24h setiap 5 menit
   async function fetchVolume24h() {
