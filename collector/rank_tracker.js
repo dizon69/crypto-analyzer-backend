@@ -1,5 +1,5 @@
 const { setInterval } = require('node:timers');
-const { getSnapshotData } = require('./snapshot_collector');
+const { getSnapshotData } = require('./snapshot_collector.js');
 
 const history = []; // max length 50
 
